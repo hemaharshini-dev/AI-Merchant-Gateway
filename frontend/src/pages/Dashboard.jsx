@@ -16,12 +16,26 @@ export default function Dashboard() {
   const [merchant, setMerchant] = useState(null)
   const [txs, setTxs] = useState([])
   const [pending, setPending] = useState([])
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
+  function fetchAll() {
+    Promise.all([
+      getMerchant(),
+      getAllTransactions(),
+      getPending()
+    ]).then(([m, t, p]) => {
+      setMerchant(m.data)
+      setTxs(t.data)
+      setPending(p.data)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }
+
   useEffect(() => {
-    getMerchant().then(r => setMerchant(r.data))
-    getAllTransactions().then(r => setTxs(r.data))
-    getPending().then(r => setPending(r.data))
+    fetchAll()
+    const interval = setInterval(fetchAll, 15000)
+    return () => clearInterval(interval)
   }, [])
 
   const approved = txs.filter(t => t.policy_decision === 'APPROVE').length
@@ -32,8 +46,11 @@ export default function Dashboard() {
 
   return (
     <div className="page">
-      <div className="page-title">📊 Merchant Dashboard</div>
-      <div className="page-sub">{merchant?.name || 'TechKart'} — AI Commerce Overview</div>
+      <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
+        <div className="page-title">📊 Merchant Dashboard</div>
+        <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={fetchAll}>↻ Refresh</button>
+      </div>
+      <div className="page-sub">{merchant?.name || 'TechKart'} — AI Commerce Overview {loading && <span className="spinner" style={{ width: 12, height: 12, marginLeft: 8 }} />}</div>
 
       <div className="grid-4" style={{ marginBottom: 24 }}>
         <div className="stat"><div className="stat-value">{txs.length}</div><div className="stat-label">Total Transactions</div></div>

@@ -8,7 +8,13 @@ export default function Approvals() {
   const [done, setDone] = useState({})
   const navigate = useNavigate()
 
-  useEffect(() => { getPending().then(r => setPending(r.data)) }, [])
+  useEffect(() => {
+    getPending().then(r => setPending(r.data))
+    const interval = setInterval(() => {
+      getPending().then(r => setPending(r.data))
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   async function act(id, action) {
     setLoading(l => ({ ...l, [id]: action }))
