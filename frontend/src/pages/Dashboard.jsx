@@ -47,20 +47,20 @@ export default function Dashboard() {
   return (
     <div className="page">
       <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
-        <div className="page-title">📊 Merchant Dashboard</div>
+        <div className="page-title">Merchant Dashboard</div>
         <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={fetchAll}>↻ Refresh</button>
       </div>
       <div className="page-sub">{merchant?.name || 'TechKart'} — AI Commerce Overview {loading && <span className="spinner" style={{ width: 12, height: 12, marginLeft: 8 }} />}</div>
 
       <div className="grid-4" style={{ marginBottom: 24 }}>
-        <div className="stat"><div className="stat-value">{txs.length}</div><div className="stat-label">Total Transactions</div></div>
-        <div className="stat"><div className="stat-value" style={{ color: 'var(--approve)' }}>{approved}</div><div className="stat-label">Auto Approved</div></div>
-        <div className="stat"><div className="stat-value" style={{ color: 'var(--review)' }}>{pending.length}</div><div className="stat-label">Pending Approval</div></div>
-        <div className="stat"><div className="stat-value" style={{ color: 'var(--deny)' }}>{denied}</div><div className="stat-label">Blocked</div></div>
+        <div className="stat fade-up fade-up-1"><div className="stat-value">{txs.length}</div><div className="stat-label">Total Transactions</div></div>
+        <div className="stat fade-up fade-up-2"><div className="stat-value" style={{ color: 'var(--approve)' }}>{approved}</div><div className="stat-label">Auto Approved</div></div>
+        <div className="stat fade-up fade-up-3"><div className="stat-value" style={{ color: 'var(--review)' }}>{pending.length}</div><div className="stat-label">Pending Approval</div></div>
+        <div className="stat fade-up fade-up-4"><div className="stat-value" style={{ color: 'var(--deny)' }}>{denied}</div><div className="stat-label">Blocked</div></div>
       </div>
 
       <div className="grid-2" style={{ marginBottom: 24 }}>
-        <div className="card">
+        <div className="card fade-up fade-up-1">
           <div className="card-title">Revenue Processed</div>
           <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--accent2)' }}>
             Rs.{totalRev.toLocaleString('en-IN')}

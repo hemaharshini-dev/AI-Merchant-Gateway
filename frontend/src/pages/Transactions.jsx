@@ -21,7 +21,7 @@ export default function Transactions() {
 
   return (
     <div className="page">
-      <div className="page-title">📋 All Transactions</div>
+      <div className="page-title">All Transactions</div>
       <div className="page-sub">Every AI purchase request and its outcome. Click a row to see the full audit trail.</div>
 
       <div className="card">

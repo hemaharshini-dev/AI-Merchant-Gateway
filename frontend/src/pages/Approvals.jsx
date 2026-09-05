@@ -30,7 +30,7 @@ export default function Approvals() {
 
   return (
     <div className="page">
-      <div className="page-title">⏳ Human Approvals</div>
+      <div className="page-title">Human Approvals</div>
       <div className="page-sub">Transactions that exceed the auto-approval threshold and require merchant review.</div>
 
       {pending.length === 0 && (

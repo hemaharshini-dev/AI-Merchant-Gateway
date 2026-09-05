@@ -119,7 +119,7 @@ export default function BuyerView() {
   return (
     <div className="page" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
-        <div className="page-title">🤖 AI Buyer</div>
+        <div className="page-title">AI Buyer</div>
         <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={clearChat}>Clear Chat</button>
       </div>
       <div className="page-sub">Enter a natural language purchase request. The agent will search, evaluate policy, and execute payment.</div>
