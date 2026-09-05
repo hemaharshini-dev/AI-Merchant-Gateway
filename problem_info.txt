@@ -1,0 +1,1434 @@
+Absolutely. Now that we've locked **Track 01**, I would freeze the concept before touching implementation.
+
+The core idea we're building is:
+
+# **AI Merchant Gateway**
+
+### *Making merchants discoverable, purchasable, and safely transactable by AI buyers.*
+
+The important distinction is that **we are not building another AI shopping chatbot**.
+
+We are building the **merchant-side infrastructure/agent layer that allows an autonomous AI buyer to interact with a merchant, understand its catalog and policies, make a purchase decision, and execute a Razorpay payment — while enforcing merchant-defined spending and transaction rules.**
+
+Below is the detailed problem statement/spec I'd give to a CLI coding agent.
+
+---
+
+# 1. Project Problem Statement
+
+## Problem
+
+The way e-commerce works today is primarily designed for **human buyers**.
+
+A human visits a merchant's website, browses products, reads product information, checks prices and availability, adds products to a cart, enters checkout details, and completes payment.
+
+AI agents change this interaction model.
+
+An AI buyer may instead receive a high-level objective such as:
+
+> "Buy two wireless keyboards for my team, under ₹5,000 total, preferably mechanical, and make sure they can be delivered to Hyderabad."
+
+The AI buyer should be able to independently:
+
+1. Discover merchants that can satisfy the request.
+2. Understand their product catalog.
+3. Compare products.
+4. Understand merchant policies.
+5. Check availability.
+6. Calculate the final transaction amount.
+7. Decide whether the purchase satisfies the buyer's constraints.
+8. Request a transaction from the merchant.
+9. Complete payment.
+10. Receive confirmation.
+
+However, allowing autonomous AI agents to transact introduces a new problem:
+
+### **How can a merchant safely accept transactions initiated by AI agents?**
+
+A merchant cannot simply give an AI unrestricted access to its payment system.
+
+The merchant needs to control:
+
+* maximum transaction amount
+* daily spending limits
+* permitted product categories
+* permitted quantities
+* discount limits
+* merchant-specific policies
+* human approval thresholds
+* payment authorization
+* transaction auditability
+
+The AI agent therefore needs a **controlled commerce layer between the AI buyer and the merchant's payment infrastructure.**
+
+---
+
+# 2. Our Proposed Solution
+
+We will build an **AI Merchant Gateway** that converts a conventional merchant into an **AI-ready merchant**.
+
+The gateway exposes the merchant's:
+
+* products
+* prices
+* inventory
+* product attributes
+* shipping information
+* return policies
+* purchasing constraints
+
+in a structured, AI-consumable form.
+
+An AI buyer interacts with the gateway using natural language.
+
+The gateway's agent then:
+
+```text
+AI Buyer Request
+       ↓
+Intent Understanding
+       ↓
+Merchant Catalog Search
+       ↓
+Product Matching
+       ↓
+Constraint Validation
+       ↓
+Merchant Policy Evaluation
+       ↓
+Transaction Risk / Authorization Check
+       ↓
+Human Approval if Required
+       ↓
+Razorpay Order Creation
+       ↓
+Payment
+       ↓
+Transaction Confirmation
+       ↓
+Audit Trail
+```
+
+The key principle is:
+
+> **The AI can recommend and initiate a transaction, but it can never bypass the merchant's transaction policies.**
+
+---
+
+# 3. Example
+
+Suppose the merchant sells electronics.
+
+Merchant policy:
+
+```text
+Maximum transaction amount: ₹10,000
+
+Maximum daily AI-agent spend: ₹30,000
+
+Allowed categories:
+- Electronics
+- Office equipment
+
+Maximum quantity per transaction: 5
+
+Maximum AI-negotiated discount: 10%
+
+Transactions above ₹10,000:
+Human approval required
+```
+
+An AI buyer says:
+
+> "I need three wireless keyboards for my development team. Total budget is ₹8,000."
+
+The agent searches the merchant catalog.
+
+It finds:
+
+```text
+Keyboard A
+₹2,499
+Mechanical
+Wireless
+In stock
+
+Keyboard B
+₹1,999
+Wireless
+Membrane
+In stock
+```
+
+The agent selects three Keyboard A units:
+
+```text
+3 × ₹2,499
+= ₹7,497
+```
+
+The gateway evaluates:
+
+```text
+Transaction amount: ₹7,497
+Maximum allowed: ₹10,000
+        ↓
+PASS
+
+Category:
+Office equipment
+        ↓
+PASS
+
+Quantity:
+3 ≤ 5
+        ↓
+PASS
+
+Daily AI-agent spend:
+₹7,497 ≤ ₹30,000
+        ↓
+PASS
+```
+
+The system creates a Razorpay test-mode order.
+
+Payment succeeds.
+
+The system records:
+
+```text
+Transaction ID
+AI Agent ID
+Merchant ID
+Products purchased
+Amount
+Policy checks
+Agent reasoning
+Approval status
+Razorpay order ID
+Payment status
+Timestamp
+```
+
+---
+
+# 4. Failure Scenario
+
+This is **mandatory** for the demo.
+
+The AI buyer asks:
+
+> "Buy five monitors for our office."
+
+Suppose the total is:
+
+```text
+₹44,995
+```
+
+But the agent's transaction limit is:
+
+```text
+₹30,000
+```
+
+The system must **not** simply execute the payment.
+
+Instead:
+
+```text
+TRANSACTION BLOCKED
+
+Requested amount: ₹44,995
+Allowed amount: ₹30,000
+
+Reason:
+Transaction exceeds the AI agent's
+per-transaction spending limit.
+
+Action:
+Human approval required.
+```
+
+The human can then:
+
+```text
+[Approve Transaction]
+[Reject Transaction]
+```
+
+If approved, the transaction proceeds.
+
+If rejected, the transaction ends.
+
+This demonstrates the Track 01 requirement that money actions are:
+
+**explainable + bounded + gated.**
+
+---
+
+# 5. Core Product Components
+
+The MVP should contain **five major components**.
+
+## A. AI Buyer
+
+A natural-language interface representing an autonomous buyer.
+
+Example:
+
+> "Find me a laptop under ₹70,000 with 16GB RAM."
+
+The AI buyer should convert the request into structured constraints:
+
+```json
+{
+  "category": "laptop",
+  "max_price": 70000,
+  "requirements": {
+    "ram": "16GB"
+  }
+}
+```
+
+---
+
+# B. AI-Readable Merchant Catalog
+
+The merchant provides a product catalog.
+
+Each product should contain information such as:
+
+```json
+{
+  "product_id": "LAP001",
+  "name": "Example Laptop",
+  "category": "Electronics",
+  "price": 64999,
+  "currency": "INR",
+  "inventory": 12,
+  "attributes": {
+    "ram": "16GB",
+    "storage": "512GB SSD"
+  },
+  "shipping": {
+    "available": true
+  },
+  "return_policy": "7 days"
+}
+```
+
+The AI agent should be able to search this catalog.
+
+---
+
+# C. Merchant Policy Engine
+
+This is one of the **most important differentiating components**.
+
+Merchants define rules governing what AI agents can do.
+
+Example:
+
+```json
+{
+  "max_transaction_amount": 10000,
+  "daily_spending_limit": 30000,
+  "max_quantity": 5,
+  "allowed_categories": [
+    "Electronics",
+    "Office Equipment"
+  ],
+  "max_discount_percent": 10,
+  "human_approval_threshold": 7500
+}
+```
+
+The policy engine evaluates every proposed transaction.
+
+It should return something like:
+
+```json
+{
+  "decision": "REVIEW",
+  "allowed": false,
+  "reason": "Transaction exceeds automatic approval threshold.",
+  "requires_human_approval": true
+}
+```
+
+**Do not let the LLM itself enforce these rules.**
+
+The LLM can reason.
+
+The deterministic policy engine should enforce.
+
+That's an important architectural distinction.
+
+---
+
+# D. Razorpay Payment Layer
+
+Once the transaction passes all required checks:
+
+```text
+AI decision
+     ↓
+Policy validation
+     ↓
+Approved
+     ↓
+Razorpay Test Mode
+     ↓
+Create Order
+     ↓
+Payment
+     ↓
+Payment status
+     ↓
+Confirmation
+```
+
+Use the Razorpay Test Mode credentials through environment variables.
+
+**Never hardcode or expose API secrets.**
+
+---
+
+# E. Audit & Explainability Layer
+
+Every important decision must be recorded.
+
+For example:
+
+```text
+10:42:01
+AI buyer requested 3 keyboards
+
+10:42:02
+Catalog search executed
+
+10:42:03
+5 matching products found
+
+10:42:04
+Product selected:
+Keyboard A
+
+10:42:04
+Transaction amount:
+₹7,497
+
+10:42:04
+Policy evaluation:
+PASSED
+
+10:42:05
+Razorpay order created
+
+10:42:12
+Payment successful
+
+10:42:12
+Transaction completed
+```
+
+For blocked transactions:
+
+```text
+10:44:21
+AI buyer requested 5 monitors
+
+10:44:22
+Transaction amount:
+₹44,995
+
+10:44:22
+Policy evaluation:
+FAILED
+
+Reason:
+Amount exceeds ₹30,000 limit
+
+10:44:22
+Human approval required
+```
+
+This audit trail should be visible in the dashboard.
+
+---
+
+# 6. What Makes This an AI Project?
+
+This is important because we **must not build a normal e-commerce application and put an LLM on top of it.**
+
+AI should perform meaningful tasks.
+
+### AI should handle:
+
+**Intent understanding**
+
+```text
+"Get me something good for coding under 50k"
+```
+
+→ structured requirements.
+
+**Catalog reasoning**
+
+Compare multiple products and determine which best satisfies the buyer's requirements.
+
+**Natural-language policy interpretation**
+
+For example, the merchant could configure:
+
+> "Agents can spend up to ₹10,000 automatically, but anything above ₹7,500 should be reviewed."
+
+The system can translate that into structured policy configuration.
+
+**Purchase reasoning**
+
+The agent explains why it selected a particular product.
+
+**Agent orchestration**
+
+The agent should decide which tool to call next:
+
+```text
+search_catalog()
+check_inventory()
+get_product()
+calculate_total()
+check_policy()
+create_order()
+request_approval()
+```
+
+But critical financial constraints remain deterministic.
+
+---
+
+# 7. Agent Tool Architecture
+
+The AI agent should have access to tools similar to:
+
+```text
+search_products()
+get_product_details()
+check_inventory()
+get_merchant_policy()
+calculate_order_total()
+evaluate_transaction_policy()
+create_razorpay_order()
+get_payment_status()
+request_human_approval()
+```
+
+The important part:
+
+### Not every tool should be freely executable.
+
+For example:
+
+```text
+search_products()
+       ↓
+SAFE
+```
+
+but:
+
+```text
+create_razorpay_order()
+       ↓
+Policy validation REQUIRED
+```
+
+and:
+
+```text
+execute_payment()
+       ↓
+Policy validation
+       ↓
+Approval check
+       ↓
+Allowed
+```
+
+This creates a genuine **agent permission architecture**.
+
+---
+
+# 8. Human-in-the-Loop
+
+There should be three possible decisions:
+
+### APPROVE
+
+Transaction satisfies all policies.
+
+```text
+₹4,500
+Limit: ₹10,000
+
+→ Automatically approved
+```
+
+### REVIEW
+
+Transaction is potentially valid but requires human approval.
+
+```text
+₹9,000
+Automatic threshold: ₹7,500
+
+→ Human approval required
+```
+
+### DENY
+
+Transaction violates a hard rule.
+
+```text
+₹20,000
+Maximum transaction: ₹10,000
+
+→ Automatically rejected
+```
+
+This distinction is important.
+
+A soft limit can produce:
+
+> **REVIEW**
+
+A hard limit can produce:
+
+> **DENY**
+
+---
+
+# 9. Suggested System Architecture
+
+```text
+                    ┌─────────────────────┐
+                    │      AI BUYER       │
+                    │ Natural Language    │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │   AI AGENT LAYER    │
+                    │                     │
+                    │ Intent             │
+                    │ Reasoning          │
+                    │ Tool Selection     │
+                    └──────────┬──────────┘
+                               │
+                 ┌─────────────┼──────────────┐
+                 │             │              │
+                 ▼             ▼              ▼
+          ┌────────────┐ ┌────────────┐ ┌────────────┐
+          │  Catalog   │ │  Merchant  │ │ Inventory  │
+          │   Tools    │ │  Policies  │ │   Tools    │
+          └────────────┘ └──────┬─────┘ └────────────┘
+                                │
+                                ▼
+                       ┌────────────────┐
+                       │ POLICY ENGINE  │
+                       │                │
+                       │ Limits         │
+                       │ Categories     │
+                       │ Quantity       │
+                       │ Approval       │
+                       └───────┬────────┘
+                               │
+                    ┌──────────┴─────────┐
+                    │                    │
+                 DENY/REVIEW           APPROVE
+                    │                    │
+                    ▼                    ▼
+             ┌─────────────┐      ┌─────────────┐
+             │ Human       │      │  Razorpay   │
+             │ Approval    │      │ Test APIs   │
+             └──────┬──────┘      └──────┬──────┘
+                    │                    │
+                    └──────────┬─────────┘
+                               ▼
+                       ┌───────────────┐
+                       │ Payment       │
+                       │ Result        │
+                       └───────┬───────┘
+                               ▼
+                       ┌───────────────┐
+                       │ Audit Trail   │
+                       │ + Metrics     │
+                       └───────────────┘
+```
+
+---
+
+# 10. Suggested Tech Stack
+
+For your team, I would keep it very close to what you've already used.
+
+### Frontend
+
+**React + Vite**
+
+Merchant dashboard + AI buyer interface.
+
+### Backend
+
+**FastAPI**
+
+API orchestration and Razorpay integration.
+
+### Agent
+
+**LangGraph**
+
+This is a good fit because we need explicit state transitions and controlled tool execution.
+
+Something like:
+
+```text
+START
+ ↓
+Parse Intent
+ ↓
+Search Catalog
+ ↓
+Evaluate Products
+ ↓
+Calculate Transaction
+ ↓
+Policy Check
+ ↓
+ ┌──────────┼───────────┐
+ ↓          ↓           ↓
+DENY      REVIEW      APPROVE
+           ↓             ↓
+       Human Gate        │
+           ↓             │
+           └──────┬──────┘
+                  ↓
+           Create Razorpay Order
+                  ↓
+             Payment Status
+                  ↓
+              Audit Log
+                  ↓
+                 END
+```
+
+### Database
+
+For MVP:
+
+**PostgreSQL** or **SQLite**.
+
+I'd actually start with SQLite to move fast, then PostgreSQL if needed.
+
+### AI
+
+Use an LLM with structured tool calling.
+
+Do **not** let the LLM directly execute arbitrary Razorpay API requests.
+
+---
+
+# 11. What We Should NOT Build
+
+This is important enough to put directly into the coding-agent specification.
+
+The project should **not** become:
+
+```text
+❌ Generic shopping chatbot
+❌ Generic e-commerce website
+❌ Generic Razorpay checkout clone
+❌ Generic product recommendation engine
+❌ Generic payment assistant
+❌ Unrestricted AI payment agent
+❌ Fake Razorpay API implementation
+```
+
+The core innovation is:
+
+> **AI-native merchant transacting with controlled autonomous purchasing.**
+
+---
+
+# 12. MVP Scope
+
+Keep the first version SMALL.
+
+### One merchant
+
+Example:
+
+```text
+TechKart
+```
+
+### 30–100 products
+
+Synthetic merchant catalog.
+
+### One AI buyer
+
+Example:
+
+```text
+Office Procurement Agent
+```
+
+### One currency
+
+INR.
+
+### One payment provider
+
+Razorpay Test Mode.
+
+### Core policies
+
+Only:
+
+```text
+Maximum transaction amount
+Daily spending limit
+Allowed categories
+Maximum quantity
+Human approval threshold
+```
+
+That's enough.
+
+---
+
+# 13. Demo Scenario
+
+The final 5-minute demo should have **three acts**.
+
+## ACT 1 — Discovery
+
+User says:
+
+> "I need three wireless keyboards under ₹8,000."
+
+Agent:
+
+```text
+Searching merchant catalog...
+
+5 products match.
+
+Recommended:
+3 × Mechanical Wireless Keyboard
+
+Total:
+₹7,497
+
+Reason:
+Best match for wireless + mechanical requirements
+while remaining within budget.
+```
+
+---
+
+## ACT 2 — Autonomous transaction
+
+System evaluates:
+
+```text
+Transaction: ₹7,497
+
+Category: Office Equipment
+✓ Allowed
+
+Quantity: 3
+✓ Allowed
+
+Transaction limit: ₹10,000
+✓ Allowed
+
+Daily spend: ₹7,497 / ₹30,000
+✓ Allowed
+
+Decision:
+AUTO APPROVE
+```
+
+Then:
+
+```text
+Creating Razorpay test order...
+
+Payment successful ✅
+
+Order completed.
+```
+
+---
+
+# ACT 3 — Failure / Guardrail
+
+User says:
+
+> "Now buy five monitors."
+
+System:
+
+```text
+Total:
+₹44,995
+
+Maximum transaction:
+₹10,000
+
+Decision:
+BLOCKED
+```
+
+Then:
+
+> **"This transaction exceeds the agent's allowed spending limit. Human approval required."**
+
+Human clicks:
+
+**Review Transaction**
+
+Dashboard shows:
+
+```text
+Requested:
+₹44,995
+
+Limit:
+₹10,000
+
+Violation:
+Transaction amount
+
+Risk:
+HIGH
+
+Recommended action:
+Reject / modify order
+```
+
+This is where you show:
+
+### **"The AI isn't allowed to move money just because it can."**
+
+That is your core story.
+
+---
+
+# 14. Success Metrics
+
+We should have measurable evidence.
+
+### Commerce metrics
+
+```text
+Product search success rate
+Product matching accuracy
+Successful transaction rate
+Average time to checkout
+```
+
+### Agent metrics
+
+```text
+Correct tool selection
+Correct policy enforcement
+Successful autonomous decisions
+Human-review rate
+```
+
+### Payment metrics
+
+```text
+Orders created
+Payments successful
+Payments failed
+Transactions blocked
+```
+
+### Safety metrics
+
+Most importantly:
+
+```text
+Unauthorized transactions:
+0
+
+Policy bypasses:
+0
+
+Blocked transactions correctly identified:
+X / Y
+```
+
+You can create a test suite with 50–100 simulated purchase requests and measure policy decisions.
+
+---
+
+# 15. The actual problem statement for your presentation
+
+You can eventually say:
+
+> **AI agents are rapidly becoming buyers, but merchants are not yet designed to safely transact with autonomous software. Existing e-commerce interfaces expose products and checkout flows designed for humans, while autonomous agents require machine-readable catalogs, structured merchant policies, delegated spending controls, and auditable payment execution.**
+>
+> **We propose an AI Merchant Gateway that makes merchants discoverable and transactable by AI buyers. The gateway allows an AI buyer to understand a merchant's catalog, select products based on natural-language requirements, evaluate the transaction against merchant-defined policies, and execute an approved payment through Razorpay. Every financial action is bounded by deterministic policies, escalated to humans when necessary, and recorded in an auditable trail.**
+>
+> **The goal is not simply to enable AI agents to make payments, but to create the control layer that allows merchants to safely participate in the emerging agentic commerce ecosystem.**
+
+That is the **actual problem we're solving**.
+
+---
+
+# 16. And this is the prompt I'd give your CLI coding agent
+
+You can paste the following as the **initial project specification**:
+
+```text
+Build a production-quality hackathon MVP called "AI Merchant Gateway".
+
+PROBLEM:
+
+AI agents are becoming potential buyers, but traditional merchant websites and checkout systems are designed for human users. An autonomous AI buyer needs to discover products, understand merchant policies, select products based on natural-language requirements, and complete transactions programmatically.
+
+However, merchants cannot safely give autonomous AI agents unrestricted access to payment systems. Merchants need explicit controls over transaction amounts, spending limits, product categories, quantities, discounts, and human approval requirements.
+
+The project should solve this by creating an AI Merchant Gateway: a merchant-side agentic commerce layer that makes a merchant's catalog AI-readable and allows AI buyers to purchase from the merchant through a controlled, explainable, and auditable workflow.
+
+CORE OBJECTIVE:
+
+Build an AI agent that can:
+
+1. Understand a natural-language purchase request.
+2. Convert the request into structured constraints.
+3. Search and reason over an AI-readable merchant catalog.
+4. Compare matching products.
+5. Check inventory and product constraints.
+6. Calculate the transaction amount.
+7. Evaluate the transaction against deterministic merchant policies.
+8. Automatically approve transactions that satisfy all policies.
+9. Escalate transactions requiring human approval.
+10. Deny transactions violating hard policies.
+11. Create a Razorpay Test Mode order only after required policy checks pass.
+12. Track the resulting payment status.
+13. Produce a complete audit trail explaining every important decision.
+
+IMPORTANT ARCHITECTURAL PRINCIPLE:
+
+The LLM/agent must NOT be responsible for enforcing financial limits.
+
+The LLM is responsible for reasoning, intent understanding, product selection, and tool orchestration.
+
+A deterministic policy engine must enforce:
+
+- maximum transaction amount
+- daily spending limit
+- allowed product categories
+- maximum quantity
+- human approval threshold
+- maximum discount if implemented
+
+The agent must never be able to bypass the policy engine.
+
+TECH STACK:
+
+Frontend:
+- React
+- Vite
+
+Backend:
+- Python
+- FastAPI
+
+Agent:
+- LangGraph or equivalent stateful agent orchestration
+- LLM with structured tool calling
+
+Database:
+- SQLite for initial MVP
+- Design repository/data layer so PostgreSQL can be introduced later
+
+Payments:
+- Razorpay Test Mode APIs
+
+Configuration:
+- Use environment variables
+- RAZORPAY_KEY_ID
+- RAZORPAY_KEY_SECRET
+
+Never hardcode credentials.
+Never expose secrets to the frontend.
+Never commit .env.
+
+CORE ENTITIES:
+
+Merchant
+- id
+- name
+- currency
+- policies
+
+Product
+- id
+- merchant_id
+- name
+- description
+- category
+- price
+- inventory
+- attributes
+- shipping information
+- return policy
+
+AI Buyer
+- id
+- name
+- spending limits
+- permitted categories
+- approval rules
+
+Purchase Request
+- id
+- buyer_id
+- natural_language_request
+- parsed_constraints
+- selected_products
+- calculated_amount
+- status
+
+Transaction
+- id
+- purchase_request_id
+- amount
+- policy_decision
+- approval_status
+- razorpay_order_id
+- payment_status
+- timestamps
+
+Audit Event
+- id
+- transaction_id
+- event_type
+- description
+- metadata
+- timestamp
+
+AGENT TOOLS:
+
+Implement controlled tools such as:
+
+search_products()
+get_product_details()
+check_inventory()
+get_merchant_policy()
+calculate_order_total()
+evaluate_transaction_policy()
+create_razorpay_order()
+get_payment_status()
+request_human_approval()
+
+Do not allow arbitrary API execution by the LLM.
+
+AGENT WORKFLOW:
+
+START
+→ Parse user intent
+→ Generate structured purchase constraints
+→ Search catalog
+→ Evaluate matching products
+→ Select/recommend product
+→ Calculate total
+→ Evaluate deterministic policy
+→ If DENY: explain rejection and stop
+→ If REVIEW: create pending approval and wait
+→ If APPROVED: create Razorpay Test Mode order
+→ Retrieve/track payment status
+→ Record result
+→ Display audit trail
+→ END
+
+POLICY DECISIONS:
+
+APPROVE:
+Transaction satisfies all automatic approval rules.
+
+REVIEW:
+Transaction is potentially valid but requires explicit human approval.
+
+DENY:
+Transaction violates a hard merchant policy.
+
+Example:
+
+max_transaction_amount = 10000
+daily_spending_limit = 30000
+max_quantity = 5
+allowed_categories = ["Electronics", "Office Equipment"]
+human_approval_threshold = 7500
+
+A transaction of ₹5,000 should be automatically approved.
+
+A transaction of ₹9,000 should require human approval if the threshold is ₹7,500.
+
+A transaction of ₹20,000 should be denied if the hard maximum is ₹10,000.
+
+AI BUYER EXAMPLE:
+
+User:
+"I need three wireless mechanical keyboards under ₹8,000."
+
+The agent should:
+- understand the requirements
+- search the catalog
+- identify matching products
+- compare options
+- recommend one
+- calculate total
+- check policy
+- create a Razorpay order if approved
+
+FAILURE SCENARIO:
+
+User:
+"Buy five monitors."
+
+If the total is ₹44,995 and the maximum transaction amount is ₹10,000:
+
+The system must NOT create a payment.
+
+Instead show:
+
+TRANSACTION BLOCKED
+
+Requested amount: ₹44,995
+Allowed amount: ₹10,000
+Reason: Transaction exceeds merchant's hard spending limit.
+Action: Transaction denied.
+
+SECOND FAILURE SCENARIO:
+
+If the amount exceeds the automatic approval threshold but remains below the hard limit:
+
+Example:
+Transaction = ₹9,000
+Hard limit = ₹10,000
+Human approval threshold = ₹7,500
+
+Show:
+
+HUMAN APPROVAL REQUIRED
+
+Reason:
+Transaction exceeds automatic approval threshold.
+
+Provide:
+[Approve]
+[Reject]
+
+Only after approval should the system create the Razorpay order.
+
+FRONTEND:
+
+Create two main views.
+
+1. AI BUYER
+
+Chat-like interface where the buyer enters natural-language purchase requests.
+
+Show:
+- interpreted requirements
+- recommended products
+- selected products
+- price
+- policy evaluation
+- transaction status
+- payment result
+
+2. MERCHANT DASHBOARD
+
+Show:
+- merchant information
+- AI commerce status
+- product catalog
+- merchant policies
+- recent AI transactions
+- pending approvals
+- blocked transactions
+- successful payments
+- recovered/processed transaction value
+- audit logs
+
+TRANSACTION DETAIL PAGE:
+
+For each transaction show:
+
+- buyer
+- products
+- amount
+- policy checks
+- policy decision
+- approval status
+- Razorpay order ID
+- payment status
+- agent reasoning summary
+- chronological audit trail
+
+AUDIT TRAIL:
+
+Record events such as:
+
+Purchase request received
+Intent parsed
+Catalog searched
+Products matched
+Product selected
+Transaction calculated
+Policy evaluated
+Policy passed/failed
+Human approval requested
+Human approval received
+Razorpay order created
+Payment status received
+Transaction completed/failed
+
+Do not expose hidden chain-of-thought. Store concise decision explanations and structured reasons instead.
+
+TESTING:
+
+Create a deterministic test suite containing at least 50 simulated purchase requests covering:
+
+- valid low-value transactions
+- transactions above approval threshold
+- transactions above hard limit
+- disallowed categories
+- excessive quantities
+- insufficient inventory
+- invalid product requests
+- ambiguous requests
+- successful payments
+- failed payments
+- human-approved transactions
+- human-rejected transactions
+
+Measure:
+
+- policy decision accuracy
+- unauthorized transaction count
+- policy bypass count
+- successful transaction rate
+- human review rate
+- payment success rate
+
+The target is zero unauthorized transactions and zero policy bypasses.
+
+SECURITY:
+
+- Never expose Razorpay secrets in frontend code.
+- Never log Razorpay secret keys.
+- Never allow the LLM to directly construct arbitrary Razorpay API requests.
+- All financial actions must pass through backend validation.
+- All payment actions must be auditable.
+- Use Test Mode only during development.
+- Validate all tool arguments server-side.
+
+MVP PRIORITY:
+
+Prioritize a reliable end-to-end flow over excessive features.
+
+Must have:
+1. AI buyer
+2. Merchant catalog
+3. Product search
+4. Policy engine
+5. Human approval flow
+6. Razorpay Test Mode order creation
+7. Payment status
+8. Audit trail
+9. Merchant dashboard
+10. Automated tests
+
+Do not build unnecessary features such as:
+- multi-merchant marketplace
+- real shipping integration
+- real inventory providers
+- production payment processing
+- complex recommendation models
+- cryptocurrency
+- unrestricted autonomous payments
+
+The final product should demonstrate:
+
+AI Buyer
+→ discovers merchant products
+→ selects product
+→ evaluates merchant policy
+→ receives APPROVE / REVIEW / DENY
+→ gets human approval when required
+→ creates Razorpay Test Mode order
+→ completes/checks payment
+→ records complete audit trail.
+
+The product should feel like a realistic merchant-side infrastructure layer for the emerging AI-agent commerce ecosystem, not a generic chatbot or e-commerce clone.
+```
+
+---
+
+## One strategic thing: **don't let the CLI build all of this in one shot**
+
+That prompt is the **product specification**, not "generate 8,000 lines of code now." 😭
+
+I'd build it in this order:
+
+```text
+PHASE 1
+Merchant + Product database
+        ↓
+PHASE 2
+Catalog search API
+        ↓
+PHASE 3
+Deterministic Policy Engine
+        ↓
+PHASE 4
+Razorpay Test API integration
+        ↓
+PHASE 5
+Basic AI agent + tools
+        ↓
+PHASE 6
+Human approval
+        ↓
+PHASE 7
+Audit trail
+        ↓
+PHASE 8
+React dashboard
+        ↓
+PHASE 9
+50+ automated scenarios
+        ↓
+PHASE 10
+Polish + demo
+```
+
+**This order matters.** The agent should be the *last* intelligent layer placed on top of solid payment/policy primitives—not the foundation holding the entire application together with vibes and a system prompt.
+
+And the strongest story for the judges becomes extremely simple:
+
+> **"AI agents are becoming buyers. We built the merchant-side control layer that lets them buy safely."**
+
+That's a much more defensible Track 01 project than "we built an AI shopping agent."
